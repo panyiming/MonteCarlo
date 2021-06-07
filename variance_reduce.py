@@ -148,7 +148,7 @@ def heston_anti(mu, rho, kappa, sigmasquare0, theta,
     return mean, variance
 
 
-def heston_condional_single(mu, rho, kappa, sigmasquare, theta, init_price,
+def heston_conditional_single(mu, rho, kappa, sigmasquare, theta, init_price,
                             T, step_n, K, W):
     """ single simulation of Heston model by conditional expectation
         Milstein scheme
@@ -207,10 +207,10 @@ def heston_conditional_anti(mu, rho, kappa, sigmasquare0, theta, init_price,
     std = (T / step_n) ** 0.5
     for i in range(0, sim_n):
         W = np.random.normal(0, std, step_n+1)
-        payoff1 = heston_condional_single(mu, rho, kappa, sigmasquare0,
+        payoff1 = heston_conditional_single(mu, rho, kappa, sigmasquare0,
                     theta, init_price, T, step_n, K, W)
         W1 = -W
-        payoff2 = heston_condional_single(mu, rho, kappa, sigmasquare0,
+        payoff2 = heston_conditional_single(mu, rho, kappa, sigmasquare0,
                     theta, init_price, T, step_n, K, W1)
         payoff[i] = (payoff1 + payoff2)/2
     mean = np.mean(payoff)
