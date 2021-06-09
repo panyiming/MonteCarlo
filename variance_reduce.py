@@ -3,7 +3,6 @@ import numpy as np
 from tqdm import tqdm
 import scipy.stats as ss
 import pandas as pd
-import matplotlib.pyplot as plt
 
 
 # Black and Scholes model
@@ -78,28 +77,8 @@ def heston(mu, rho, kappa, sigmasquare0, theta, init_price,
     return mean, variance
 
 
-def correlation(mu, rho, kappa, sigmasquare0, theta,
-                    init_price, sim_n, step_n, T, K, r):
-    """ get the correlation bwtween control variable and target variable
-    sim_n: the number of simulations
-    step_n: the number of steps
-    """
-    payoff = np.zeros([sim_n])
-    STs = np.zeros([sim_n])
-    std = (T / step_n) ** 0.5
-    for i in range(0, sim_n):
-        W = np.random.normal(0, std, step_n + 1)
-        Z = np.random.normal(0, std, step_n + 1)
-        ST = heston_single(mu, rho, kappa, sigmasquare0,
-             theta, init_price, T, step_n, r, W, Z)
-        STs[i] = ST
-        payoff[i] = max(ST-K, 0)
-    corre = corr_c(STs, payoff, init_price)
-    return corre
-
-
 def heston_control(mu, rho, kappa, sigmasquare0, theta,
-                      init_price, sim_n, step_n, T, K, r, corr):
+                      init_price, sim_n, step_n, T, K, r):
     """
     Monte Carlo Milstein simulation with control variate
     sim_n: the number of simulations
@@ -108,13 +87,16 @@ def heston_control(mu, rho, kappa, sigmasquare0, theta,
     # estimate correlation first:
 
     payoff = np.zeros([sim_n])
-    std = (T / step_n) ** 0.5
+    ST = np.zeros([sim_n])
+    std = (T/step_n) ** 0.5
     for i in range(0, sim_n):
         W = np.random.normal(0, std, step_n + 1)
         Z = np.random.normal(0, std, step_n + 1)
-        ST = heston_single(mu, rho, kappa, sigmasquare0,
-             theta, init_price, T, step_n, r, W, Z)
-        payoff[i] = max(ST - K, 0) + corr*(ST - init_price)
+        ST[i] = heston_single(mu, rho, kappa, sigmasquare0,
+                theta, init_price, T, step_n, r, W, Z)
+        payoff[i] = max(ST[i] - K, 0)
+    corr = corr_c(ST, payoff, init_price)
+    payoff = payoff + corr*(ST - init_price)
     mean = np.mean(payoff)
     variance = np.var(payoff)
     return mean, variance
@@ -190,7 +172,7 @@ def heston_conditional(mu, rho, kappa, sigmasquare0, theta, init_price,
     std = (T / step_n) ** 0.5
     for i in range(0, sim_n):
         W = np.random.normal(0, std, step_n+1)
-        payoff[i] = heston_condional_single(mu, rho, kappa, sigmasquare0,
+        payoff[i] = heston_conditional_single(mu, rho, kappa, sigmasquare0,
                     theta, init_price, T, step_n, K, W)
     mean = np.mean(payoff)
     variance = np.var(payoff)
@@ -250,16 +232,15 @@ def heston_anti_run(mu, rho, kappa, sigsquare0, theta,
           aveg_time, sim_n, mu, rho, kappa, sigsquare0, theta]
     return ls
 
+
 def heston_control_run(mu, rho, kappa, sigsquare0, theta,
                init_price, sim_n, step_n, T, K, r):
     num =50
-    corr = correlation(mu, rho, kappa, sigsquare0, theta,
-                            init_price, sim_n, step_n, T, K, r)
     payoffs_heston = np.zeros([num])
     time1 = time.time()
     for i in tqdm(range(num)):
         mean_i, var_i = heston_control(mu, rho, kappa, sigsquare0,
-                        theta, init_price, sim_n, step_n, T, K, r, corr)
+                        theta, init_price, sim_n, step_n, T, K, r)
         payoffs_heston[i] = mean_i
     time2 = time.time()
     aveg_time = round((time2-time1) / num, 2)
@@ -286,7 +267,6 @@ def heston_condtional_run(mu, rho, kappa, sigsquare0, theta,
     return ls
 
 
-
 def heston_conditional_anti_run(mu, rho, kappa, sigsquare0, theta,
                init_price, sim_n, step_n, T, K, r):
     num =50
@@ -302,6 +282,7 @@ def heston_conditional_anti_run(mu, rho, kappa, sigsquare0, theta,
     ls = [method_name, round(np.mean(payoffs_heston), 4), round(np.std(payoffs_heston), 4),
           aveg_time, sim_n, mu, rho, kappa, sigsquare0, theta]
     return ls
+
 
 def run_experiment():
     # constant parameters:
@@ -344,7 +325,8 @@ def run_experiment():
            resulsts_ls.append(ls5)
     resulsts_ls = np.array(resulsts_ls)
     col_names = ['method name', 'call price mean', 'standard deviation',
-                    'average time', 'simulation times', 'mu', 'rho', 'kappa', 'sigsquare0', 'theta']
+                 'average time', 'simulation times', 'mu', 'rho', 'kappa',
+                 'sigsquare0', 'theta']
     res_experiment = pd.DataFrame(data=resulsts_ls, columns=col_names)
     res_experiment.to_csv('exp_res.csv')
     return res_experiment
